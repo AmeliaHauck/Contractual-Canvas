@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schneider Electric Contractual Canvas Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(250, 204, 21, 0.16), transparent 22%),
+        radial-gradient(circle at 82% 22%, rgba(16, 185, 129, 0.18), transparent 24%),
+        radial-gradient(circle at 72% 78%, rgba(244, 114, 182, 0.14), transparent 22%),
+        linear-gradient(145deg, #1f2c26 0%, #19241f 42%, #111827 100%);
+      color: #e8e8e8;
+      font-size: 18px;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      width: 34vw;
+      height: 34vw;
+      min-width: 260px;
+      min-height: 260px;
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(28px);
+      opacity: 0.24;
+      animation: ambientDrift 18s ease-in-out infinite;
+    }
+
+    body::before {
+      top: -10vw;
+      left: -8vw;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.5), rgba(34, 197, 94, 0));
+    }
+
+    body::after {
+      right: -10vw;
+      bottom: -12vw;
+      background: radial-gradient(circle, rgba(22, 163, 74, 0.34), rgba(22, 163, 74, 0));
+      animation-delay: -8s;
+    }
+
+    .app-shell-frame {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: hidden;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+
+    .app-shell {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      transform-origin: top center;
+      will-change: transform;
+      position: relative;
+    }
+
+    .app-shell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 12% 16%, rgba(255, 255, 255, 0.06) 0 6px, transparent 7px),
+        radial-gradient(circle at 84% 18%, rgba(255, 255, 255, 0.05) 0 8px, transparent 9px),
+        radial-gradient(circle at 24% 78%, rgba(255, 255, 255, 0.04) 0 10px, transparent 11px),
+        radial-gradient(circle at 74% 68%, rgba(255, 255, 255, 0.04) 0 6px, transparent 7px);
+      opacity: 0.55;
+      z-index: 0;
+    }
+
+    .header {
+      background: linear-gradient(90deg, #23c16b 0%, #00a651 52%, #008c3a 100%);
+      padding: clamp(10px, 1.6vw, 16px) clamp(14px, 2vw, 24px);
+      box-shadow: 0 14px 30px rgba(5, 150, 105, 0.24), 0 2px 8px rgba(0, 0, 0, 0.28);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 0 0 auto;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      border-radius: 0 0 26px 26px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      animation: panelReveal 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .header::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 25%, rgba(255, 255, 255, 0.18) 50%, transparent 75%);
+      transform: translateX(-130%);
+      animation: headerSweep 7s linear infinite;
+      pointer-events: none;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: #ffffff;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #00a651;
+      font-size: 18px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        position: absolute;
+        left: clamp(14px, 2vw, 24px);
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .header h1 {
+      font-size: clamp(18px, 2.2vw, 24px);
+      font-weight: 700;
+      color: white;
+      margin: 0 auto;
+      text-align: center;
+      width: 100%;
+      animation: titleGlow 4.5s ease-in-out infinite;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: clamp(10px, 1.5vw, 20px);
+      padding: clamp(10px, 1.5vw, 20px);
+      width: 100%;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    .host-controls,
+    .canvas-container,
+    .prompt-section,
+    .guess-entry-panel,
+    .guess-history-panel,
+    .team-card,
+    .setup-form,
+    .prompt-choice-card,
+    .intermission-card,
+    .game-over-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .host-controls::before,
+    .canvas-container::after,
+    .prompt-section::before,
+    .guess-entry-panel::before,
+    .guess-history-panel::before,
+    .team-card::before,
+    .setup-form::before,
+    .prompt-choice-card::before,
+    .intermission-card::before,
+    .game-over-card .game-over-title::after {
+      content: "";
+      position: absolute;
+      top: -32%;
+      left: -10%;
+      width: 54%;
+      height: 56%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+      pointer-events: none;
+    }
+
+    .main-content {
+      flex: 1 1 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .content-layout {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1.5vw, 20px);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .top-layout {
+      display: flex;
+      gap: clamp(10px, 1.5vw, 20px);
+      align-items: stretch;
+      flex: 0 0 auto;
+      min-height: 0;
+    }
+
+    .host-controls {
+      width: 100%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(8px, 1vw, 12px);
+      flex-wrap: wrap;
+      padding: clamp(10px, 1.2vw, 14px);
+      background: linear-gradient(180deg, rgba(30, 44, 70, 0.94), rgba(22, 33, 56, 0.92));
+      border: 1px solid rgba(110, 231, 183, 0.2);
+      border-radius: 26px;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+      flex: 0 0 auto;
+      animation: panelReveal 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .host-controls.visible {
+      display: flex;
+    }
+
+    .host-controls-label {
+      font-size: clamp(14px, 1.2vw, 16px);
+      font-weight: 700;
+      color: #a7f3d0;
+      margin-right: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .host-controls button {
+      min-width: clamp(110px, 10vw, 150px);
+    }
+
+    .host-controls .host-primary-end {
+      background: #b91c1c;
+    }
+
+    .host-controls .host-primary-end:hover {
+      background: #991b1b;
+    }
+
+    .host-controls .danger-btn {
+      background: #b91c1c;
+    }
+
+    .host-controls .danger-btn:hover {
+      background: #991b1b;
+    }
+
+    .host-score-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .host-score-controls select,
+    .host-score-controls input {
+      min-width: 90px;
+      height: 36px;
+    }
+
+    .host-score-controls input {
+      width: 78px;
+    }
+
+    .host-score-controls .secondary-danger-btn {
+      background: #7f1d1d;
+    }
+
+    .host-score-controls .secondary-danger-btn:hover {
+      background: #651414;
+    }
+
+    .canvas-container {
+      background: linear-gradient(180deg, #ffffff 0%, #f7fcf7 100%);
+      border-radius: 30px;
+      box-shadow: 0 20px 42px rgba(15, 23, 42, 0.2);
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      position: relative;
+      animation: panelReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) both, canvasGlow 6s ease-in-out infinite;
+    }
+
+    .canvas-container::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(140deg, rgba(34, 197, 94, 0.12), transparent 30%, transparent 70%, rgba(250, 204, 21, 0.1));
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    .canvas-container::after {
+      top: -18%;
+      left: auto;
+      right: -8%;
+      width: 36%;
+      height: 42%;
+    }
+
+    .canvas-surface {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .canvas-status-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      border-bottom: 1px solid #2a3a4a;
+      background: #111827;
+      color: #d1d5db;
+      text-align: center;
+      transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .canvas-status-banner.ready {
+      background: #153b2a;
+      color: #b7f7c6;
+      box-shadow: inset 0 -8px 20px rgba(34, 197, 94, 0.16);
+    }
+
+    .canvas-status-banner.waiting {
+      background: #2b2a20;
+      color: #fcd34d;
+      box-shadow: inset 0 -8px 20px rgba(250, 204, 21, 0.08);
+    }
+
+    .canvas-status-banner.locked {
+      background: #2a1d1d;
+      color: #fca5a5;
+      box-shadow: inset 0 -8px 20px rgba(248, 113, 113, 0.08);
+    }
+
+    canvas {
+      display: block;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      cursor: crosshair;
+    }
+
+    .remote-drawer-cursor {
+      position: fixed;
+      width: 32px;
+      height: 32px;
+      pointer-events: none;
+      z-index: 2000;
+      display: none;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: contain;
+      transform: translate(-8px, -4px);
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+    }
+
+    .remote-drawer-cursor.visible {
+      display: block;
+    }
+
+    .canvas-controls {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(8px, 1vw, 12px);
+      padding: clamp(10px, 1.5vw, 16px);
+      background: linear-gradient(180deg, #25382f 0%, #1d2c25 100%);
+      border-bottom: 1px solid rgba(134, 239, 172, 0.14);
+      align-items: stretch;
+      flex: 0 0 auto;
+    }
+
+    .tool-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tool-actions button {
+      min-width: clamp(84px, 8vw, 132px);
+      min-height: clamp(40px, 4.5vw, 52px);
+      padding: clamp(8px, 1vw, 12px) clamp(10px, 1.2vw, 18px);
+      border-radius: 999px;
+      font-size: clamp(12px, 1.2vw, 16px);
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      border: 2px solid transparent;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+      transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease, background 0.22s ease;
+    }
+
+    .tool-actions button:hover {
+      transform: translateY(-3px) scale(1.04);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
+      filter: brightness(1.05);
+    }
+
+    .tool-actions button.active-tool {
+      transform: translateY(-1px) scale(1.03);
+      border-color: rgba(255, 255, 255, 0.7);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(255, 255, 255, 0.12);
+    }
+
+    .tool-actions button#brushBtn.active-tool {
+      background: linear-gradient(135deg, #00c853, #00a651);
+      color: #ffffff;
+    }
+
+    .tool-actions button#eraserBtn.active-tool {
+      background: linear-gradient(135deg, #fb923c, #f97316);
+      color: #ffffff;
+    }
+
+    .tool-actions button.inactive-tool {
+      background: #374151;
+      color: #d1d5db;
+      border-color: rgba(148, 163, 184, 0.25);
+      box-shadow: none;
+    }
+
+    .tool-settings {
+      display: flex;
+      gap: clamp(8px, 1vw, 12px);
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .control-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .color-palette {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .color-swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      padding: 0;
+      min-width: 24px;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .color-swatch:hover {
+      transform: translateY(-1px) scale(1.05);
+      border-color: rgba(255, 255, 255, 0.75);
+    }
+
+    .color-swatch.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 0 2px rgba(0, 166, 81, 0.65);
+    }
+
+    .color-swatch-white {
+      border-color: rgba(15, 19, 25, 0.55);
+    }
+
+    label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #a8a8a8;
+    }
+
+    input[type="color"],
+    input[type="range"],
+    select {
+      padding: 6px 8px;
+      border: 1px solid #3a3a3a;
+      border-radius: 4px;
+      background: #0f1319;
+      color: #e8e8e8;
+      font-size: 14px;
+    }
+
+    input[type="range"] {
+      width: clamp(80px, 9vw, 120px);
+      padding: 0;
+      height: 6px;
+    }
+
+    input[type="color"] {
+      width: 44px;
+      height: 36px;
+      padding: 2px;
+      cursor: pointer;
+    }
+
+    .brush-preset {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .brush-preset button {
+      padding: 6px 10px;
+      font-size: 14px;
+      min-width: auto;
+    }
+
+    button {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #34d399, #10b981);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 10px 20px rgba(16, 185, 129, 0.18);
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, #6ee7b7, #22c55e);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background: #4a4a4a;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .prompt-section {
+      background: linear-gradient(180deg, #234f54 0%, #1f4150 100%);
+      border: 2px solid rgba(110, 231, 183, 0.75);
+      border-radius: 30px;
+      padding: clamp(10px, 1.5vw, 16px);
+      box-shadow: 0 18px 32px rgba(16, 185, 129, 0.15);
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      animation: panelReveal 0.72s cubic-bezier(0.22, 1, 0.36, 1) both, promptBreathe 7s ease-in-out infinite;
+    }
+
+    .prompt-section::after {
+      content: "";
+      position: absolute;
+      inset: auto -10% -35% auto;
+      width: 55%;
+      height: 120%;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.18), rgba(34, 197, 94, 0));
+      pointer-events: none;
+      animation: orbLift 8s ease-in-out infinite;
+    }
+
+    .prompt-label {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #00a651;
+      margin-bottom: 8px;
+    }
+
+    .prompt-choice-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .prompt-choice-modal.hidden {
+      display: none;
+    }
+
+    .prompt-choice-card {
+      width: min(92%, 1050px);
+      background: #0f1319;
+      border: 2px solid #8bc34a;
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      color: #e8e8e8;
+    }
+
+    .prompt-choice-card h3 {
+      margin-bottom: 10px;
+      font-size: 22px;
+      text-align: center;
+      color: #00c853;
+    }
+
+    .prompt-choice-card .hint-text {
+      text-align: center;
+      font-size: 16px;
+      margin-bottom: 14px;
+      color: #c7d7ca;
+    }
+
+    .prompt-choice-info {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #a8a8a8;
+      font-size: 16px;
+    }
+
+    #promptChoiceCountdown {
+      text-align: center;
+      font-weight: 700;
+      font-size: 18px;
+      color: #fb7185;
+      margin-bottom: 12px;
+    }
+
+    .prompt-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .prompt-option {
+      background: #161f2d;
+      border: 1px solid #c7d7ca;
+      border-radius: 6px;
+      padding: 12px;
+      min-height: 120px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-direction: column;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .prompt-drawer-hint {
+      font-size: 14px;
+      line-height: 1.4;
+      color: #c7d7ca;
+      text-align: center;
+      width: 100%;
+      flex: 1;
+    }
+
+    .prompt-option:hover {
+      transform: translateY(-2px);
+      border-color: #00a651;
+      box-shadow: 0 8px 14px rgba(0, 166, 81, 0.25);
+    }
+
+    .prompt-difficulty {
+      background: rgba(0, 166, 81, 0.2);
+      border-radius: 999px;
+      padding: 2px 6px;
+      font-size: 12px;
+      color: #00e676;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      align-self: center;
+    }
+
+    .prompt-category-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      margin-bottom: 6px;
+    }
+
+    .prompt-category-row h4 {
+      font-size: 18px;
+      color: #b0f2a1;
+      margin: 0;
+    }
+
+    .prompt-choice-divider {
+      border-top: 1px dashed rgba(255, 255, 255, 0.2);
+      margin: 10px 0 14px 0;
+    }
+
+
+    .prompt-text {
+      font-size: clamp(18px, 2vw, 28px);
+      font-weight: 700;
+      color: #00a651;
+      text-align: center;
+      letter-spacing: 2px;
+      position: relative;
+      z-index: 1;
+      animation: textRise 0.7s ease both;
+    }
+
+    .prompt-text.drawer-prompt {
+      font-size: clamp(24px, 3vw, 40px);
+      font-weight: 900;
+      color: #ffd24d;
+      letter-spacing: 2.5px;
+      text-shadow: 0 2px 14px rgba(255, 210, 77, 0.3);
+    }
+
+    .timer {
+      font-size: clamp(24px, 3vw, 44px);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: 3px;
+      color: #f7fff9;
+      text-align: center;
+      margin-top: clamp(8px, 1vw, 14px);
+      padding: clamp(10px, 1.4vw, 18px) clamp(12px, 1.6vw, 20px);
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.95), rgba(22, 163, 74, 0.92));
+      border: 2px solid rgba(199, 255, 221, 0.35);
+      border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(0, 166, 81, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+      position: relative;
+      z-index: 1;
+      animation: timerPulse 2.8s ease-in-out infinite;
+    }
+
+    .timer.warning {
+      color: #fff5f5;
+      background: linear-gradient(135deg, rgba(220, 38, 38, 0.95), rgba(185, 28, 28, 0.95));
+      border-color: rgba(255, 216, 216, 0.45);
+      box-shadow: 0 12px 36px rgba(220, 38, 38, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      animation: timerWarningPulse 0.9s ease-in-out infinite;
+    }
+
+    .teams-panel {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(8px, 1vw, 16px);
+      align-items: start;
+      margin-bottom: 4px;
+      min-height: 0;
+      flex: 0 0 auto;
+    }
+
+    .guess-history-panel {
+      background: linear-gradient(180deg, rgba(34, 44, 74, 0.96), rgba(26, 34, 59, 0.96));
+      border-radius: 26px;
+      border: 1px solid rgba(110, 231, 183, 0.18);
+      box-shadow: 0 18px 34px rgba(0, 0, 0, 0.2);
+      padding: clamp(10px, 1.2vw, 16px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 0 0 clamp(260px, 23vw, 340px);
+      min-width: 0;
+      min-height: 0;
+      animation: panelReveal 0.82s cubic-bezier(0.22, 1, 0.36, 1) both, sideFloat 7s ease-in-out infinite;
+    }
+
+    .side-panel-stack {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1.2vw, 16px);
+      flex: 0 0 clamp(260px, 23vw, 340px);
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .guess-entry-panel {
+      background: linear-gradient(180deg, rgba(38, 49, 83, 0.96), rgba(27, 38, 65, 0.96));
+      border-radius: 26px;
+      border: 1px solid rgba(110, 231, 183, 0.18);
+      box-shadow: 0 18px 34px rgba(0, 0, 0, 0.2);
+      padding: clamp(10px, 1.2vw, 16px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 0 0 auto;
+      animation: panelReveal 0.76s cubic-bezier(0.22, 1, 0.36, 1) both, sideFloat 6.4s ease-in-out infinite;
+    }
+
+    .guess-entry-label {
+      font-size: clamp(16px, 1.4vw, 18px);
+      font-weight: 700;
+      color: #f3f4f6;
+    }
+
+    .guess-history-header {
+      font-size: clamp(16px, 1.4vw, 18px);
+      font-weight: 700;
+      color: #f3f4f6;
+    }
+
+    .guess-history-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .guess-history-list li {
+      padding: 2px 8px;
+      background: linear-gradient(180deg, rgba(18, 24, 39, 0.92), rgba(24, 31, 50, 0.92));
+      border-radius: 999px;
+      font-size: clamp(12px, 1vw, 13px);
+      color: #e5e7eb;
+      line-height: 1.2;
+      margin: 0;
+      animation: listEntry 0.35s ease both;
+    }
+
+    .guess-history-word {
+      color: #ef4444;
+      font-weight: 700;
+    }
+
+    .guess-history-hint {
+      color: #facc15;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .team-card {
+      background: linear-gradient(180deg, rgba(32, 42, 71, 0.98), rgba(23, 31, 54, 0.98));
+      border: 2px solid;
+      border-radius: 26px;
+      padding: clamp(10px, 1.2vw, 16px);
+      box-shadow: 0 18px 34px rgba(0, 0, 0, 0.2);
+      min-height: 100%;
+      min-width: 0;
+      transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+      animation: panelReveal 0.88s cubic-bezier(0.22, 1, 0.36, 1) both, cardHoverFloat 5.6s ease-in-out infinite;
+    }
+
+    .team-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 32px rgba(0, 0, 0, 0.34);
+    }
+
+    .team-card.team1 {
+      border-color: #00a651;
+      animation-delay: 0.08s, 0s;
+    }
+
+    .team-card.team2 {
+      border-color: #22c55e;
+      animation-delay: 0.16s, 0.6s;
+    }
+
+    .team-card.team3 {
+      border-color: #ffc93d;
+      animation-delay: 0.24s, 1.2s;
+    }
+
+    .team-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2a3a4a;
+      gap: 12px;
+    }
+
+    .team-score-block {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 2px;
+    }
+
+    .team-name {
+      flex: 1;
+      font-size: clamp(18px, 1.8vw, 24px);
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.15;
+    }
+
+    .team-score {
+      font-size: clamp(17px, 1.6vw, 22px);
+      font-weight: 700;
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.26), rgba(250, 204, 21, 0.18));
+      color: #d1fae5;
+      padding: 8px 18px;
+      border-radius: 999px;
+      animation: scoreGlow 3.2s ease-in-out infinite;
+      min-width: 56px;
+      text-align: center;
+      box-shadow: 0 10px 22px rgba(52, 211, 153, 0.16);
+    }
+
+    .team-players {
+      list-style: none;
+    }
+
+    .team-players li {
+      padding: clamp(6px, 0.8vw, 8px);
+      font-size: clamp(13px, 1.1vw, 15px);
+      background: linear-gradient(180deg, rgba(17, 24, 39, 0.9), rgba(30, 41, 59, 0.9));
+      border-radius: 999px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      word-break: break-word;
+    }
+
+    .team-players li.drawer::before {
+      content: "✏️";
+      margin-right: 8px;
+    }
+
+    .guess-input {
+      width: 100%;
+      padding: clamp(10px, 1vw, 12px);
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(17, 24, 39, 0.92), rgba(30, 41, 59, 0.92));
+      color: #f3f4f6;
+      font-size: clamp(14px, 1.1vw, 16px);
+      margin-top: 0;
+      flex: 0 0 auto;
+    }
+
+    .guess-input:focus {
+      outline: none;
+      border-color: #f97316;
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+    }
+
+    .setup-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+    }
+
+    .setup-form {
+      background: linear-gradient(180deg, #25324a 0%, #1b2438 100%);
+      border-radius: 28px;
+      padding: 32px;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+      border: 2px solid rgba(110, 231, 183, 0.72);
+      animation: panelReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .setup-form h2 {
+      margin-bottom: 24px;
+      font-size: 22px;
+      color: #00a651;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #e8e8e8;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #3a3a3a;
+      border-radius: 4px;
+      background: #0f1319;
+      color: #e8e8e8;
+      font-size: 16px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #00a651;
+      box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.1);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #34d399, #22c55e);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 999px;
+      box-shadow: 0 14px 28px rgba(16, 185, 129, 0.28);
+      font-size: 16px;
+      animation: slideIn 0.3s ease, notificationBob 2.2s ease-in-out infinite;
+      z-index: 2000;
+    }
+
+    .prompt-choice-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    .prompt-choice-modal.hidden {
+      display: none;
+    }
+
+    .prompt-choice-card {
+      background: linear-gradient(180deg, #25324a 0%, #1a2234 100%);
+      border-radius: 28px;
+      padding: 32px;
+      max-width: 600px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+      border: 2px solid rgba(110, 231, 183, 0.72);
+      animation: panelReveal 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .prompt-choice-card h3 {
+      color: #00a651;
+      margin-bottom: 24px;
+      font-size: 20px;
+      text-align: center;
+    }
+
+    .intermission-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+    }
+
+    .intermission-modal.hidden {
+      display: none;
+    }
+
+    .intermission-card {
+      width: min(92%, 620px);
+      background: linear-gradient(180deg, #26324c 0%, #1b2236 100%);
+      border: 2px solid #00a651;
+      border-radius: 30px;
+      padding: 28px 24px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+      animation: panelReveal 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .intermission-card h3 {
+      color: #fcd34d;
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .intermission-card.success {
+      border-color: #22c55e;
+      box-shadow: 0 22px 64px rgba(34, 197, 94, 0.22), 0 20px 60px rgba(0, 0, 0, 0.55);
+    }
+
+    .intermission-card.success h3 {
+      font-size: 44px;
+      line-height: 1.05;
+      margin-bottom: 16px;
+    }
+
+    .intermission-title-celebration {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      position: relative;
+      padding: 10px 24px;
+      color: #fde047;
+      text-shadow: 0 4px 18px rgba(250, 204, 21, 0.3);
+    }
+
+    .intermission-title-main {
+      position: relative;
+      display: inline-block;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      animation: titlePopPulse 1.2s ease-in-out infinite;
+    }
+
+    .intermission-title-trophy {
+      font-size: 38px;
+      filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.28));
+      animation: trophyBounce 1.1s ease-in-out infinite;
+    }
+
+    .intermission-title-confetti,
+    .intermission-title-confetti::before,
+    .intermission-title-confetti::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      transform: translateY(-50%) rotate(12deg);
+      box-shadow:
+        -22px -14px 0 #22c55e,
+        -8px 12px 0 #86efac,
+        16px -10px 0 #f97316,
+        34px 10px 0 #facc15;
+      animation: confettiBurst 1.35s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .intermission-title-confetti {
+      left: -10px;
+    }
+
+    .intermission-title-confetti::before {
+      left: calc(100% + 38px);
+      animation-delay: 0.22s;
+    }
+
+    .intermission-title-confetti::after {
+      left: calc(100% + 76px);
+      animation-delay: 0.44s;
+    }
+
+    .intermission-card p {
+      color: #d1d5db;
+      font-size: 18px;
+      line-height: 1.5;
+    }
+
+    .intermission-prompt {
+      color: #ffffff;
+      font-weight: 700;
+      margin-top: 10px;
+      margin-bottom: 18px;
+      font-size: 22px;
+    }
+
+    .intermission-countdown {
+      color: #86efac;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .game-over-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.78);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1300;
+      backdrop-filter: blur(4px);
+    }
+
+    .game-over-modal.hidden {
+      display: none;
+    }
+
+    .game-over-card {
+      width: min(94%, 760px);
+      background: linear-gradient(180deg, #1d2336 0%, #131a28 100%);
+      border: 2px solid #facc15;
+      border-radius: 34px;
+      padding: 28px 26px 34px;
+      text-align: center;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(250, 204, 21, 0.12);
+      animation: panelReveal 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .game-over-card::before,
+    .game-over-card::after {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      filter: blur(26px);
+      pointer-events: none;
+      opacity: 0.18;
+    }
+
+    .game-over-card::before {
+      top: -70px;
+      left: -50px;
+      background: radial-gradient(circle, rgba(250, 204, 21, 0.9), rgba(250, 204, 21, 0));
+    }
+
+    .game-over-card::after {
+      right: -60px;
+      bottom: -80px;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.55), rgba(34, 197, 94, 0));
+    }
+
+    .game-over-title {
+      position: relative;
+      z-index: 1;
+      color: #fde68a;
+      font-size: clamp(32px, 4vw, 52px);
+      font-weight: 900;
+      line-height: 1.04;
+      margin-bottom: 10px;
+      text-shadow: 0 8px 24px rgba(250, 204, 21, 0.22);
+      animation: titlePopPulse 1.3s ease-in-out infinite;
+    }
+
+    .game-over-subtitle {
+      position: relative;
+      z-index: 1;
+      color: #d1d5db;
+      font-size: 18px;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+
+    .game-over-winner-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      color: #f9fafb;
+      font-size: clamp(22px, 2.8vw, 34px);
+      font-weight: 900;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .game-over-winner-team {
+      color: #facc15;
+      text-shadow: 0 0 18px rgba(250, 204, 21, 0.28);
+    }
+
+    .game-over-trophy {
+      font-size: 34px;
+      animation: trophyBounce 1.1s ease-in-out infinite;
+      filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.28));
+    }
+
+    .podium-stage {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: clamp(10px, 2vw, 18px);
+      min-height: 250px;
+      margin-bottom: 22px;
+      padding: 0 8px;
+    }
+
+    .podium-tier {
+      flex: 1 1 0;
+      max-width: 190px;
+      border-radius: 18px 18px 10px 10px;
+      padding: 18px 14px 16px;
+      color: #0f172a;
+      position: relative;
+      box-shadow: 0 18px 32px rgba(0, 0, 0, 0.28);
+      transform-origin: bottom center;
+      animation: podiumRise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both, podiumFloat 3.8s ease-in-out infinite;
+    }
+
+    .podium-tier.first {
+      min-height: 198px;
+      background: linear-gradient(180deg, #fef08a 0%, #facc15 100%);
+      order: 2;
+      animation-delay: 0.1s, 0s;
+    }
+
+    .podium-tier.second {
+      min-height: 156px;
+      background: linear-gradient(180deg, #e5e7eb 0%, #94a3b8 100%);
+      order: 1;
+      animation-delay: 0.22s, 0.5s;
+    }
+
+    .podium-tier.third {
+      min-height: 126px;
+      background: linear-gradient(180deg, #fdba74 0%, #c2410c 100%);
+      color: #fff7ed;
+      order: 3;
+      animation-delay: 0.34s, 1s;
+    }
+
+    .podium-rank {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.8;
+      margin-bottom: 10px;
+    }
+
+    .podium-team {
+      font-size: clamp(20px, 2vw, 28px);
+      font-weight: 900;
+      line-height: 1.05;
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+
+    .podium-score {
+      font-size: 16px;
+      font-weight: 800;
+      opacity: 0.85;
+    }
+
+    .podium-crown {
+      position: absolute;
+      top: -34px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 34px;
+      filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.22));
+      animation: crownShine 1.6s ease-in-out infinite;
+    }
+
+    .game-over-footer {
+      position: relative;
+      z-index: 1;
+      color: #86efac;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .guesser-hint-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1250;
+      pointer-events: none;
+    }
+
+    .guesser-hint-modal.hidden {
+      display: none;
+    }
+
+    .guesser-hint-card {
+      width: min(92%, 520px);
+      background: #1a1f2e;
+      border: 2px solid #facc15;
+      border-radius: 14px;
+      padding: 24px 22px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+      text-align: center;
+      pointer-events: auto;
+      animation: panelReveal 0.46s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .guesser-hint-title {
+      color: #facc15;
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .guesser-hint-text {
+      color: #f3f4f6;
+      font-size: 22px;
+      line-height: 1.5;
+      font-weight: 600;
+    }
+
+    .prompt-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      min-height: 100px;
+    }
+
+    .prompt-option {
+      background: #151b28;
+      border: 2px solid #3a3a3a;
+      color: #e8e8e8;
+      padding: 16px;
+      border-radius: 8px;
+      flex: 0 0 auto;
+      width: 100%;
+      font-weight: 600;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .prompt-option:hover {
+      border-color: #00a651;
+      background: #1e3a2f;
+      transform: translateY(-2px);
+    }
+
+    .prompt-difficulty {
+      font-size: 12px;
+      color: #a8a8a8;
+      margin-top: 6px;
+      text-transform: uppercase;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes panelReveal {
+      from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.985);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes ambientDrift {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+      50% { transform: translate3d(24px, -18px, 0) scale(1.08); }
+    }
+
+    @keyframes headerSweep {
+      0% { transform: translateX(-130%); }
+      100% { transform: translateX(130%); }
+    }
+
+    @keyframes titleGlow {
+      0%, 100% { text-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+      50% { text-shadow: 0 0 18px rgba(255, 255, 255, 0.24); }
+    }
+
+    @keyframes canvasGlow {
+      0%, 100% { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+      50% { box-shadow: 0 12px 28px rgba(34, 197, 94, 0.18), 0 4px 12px rgba(0, 0, 0, 0.3); }
+    }
+
+    @keyframes promptBreathe {
+      0%, 100% { box-shadow: 0 2px 8px rgba(0, 166, 81, 0.2); }
+      50% { box-shadow: 0 10px 24px rgba(0, 166, 81, 0.22); }
+    }
+
+    @keyframes orbLift {
+      0%, 100% { transform: translateY(8%) scale(0.95); opacity: 0.5; }
+      50% { transform: translateY(-5%) scale(1.05); opacity: 0.9; }
+    }
+
+    @keyframes textRise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes timerPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(0, 166, 81, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+      50% { transform: scale(1.02); box-shadow: 0 16px 36px rgba(0, 166, 81, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+    }
+
+    @keyframes timerWarningPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+
+    @keyframes sideFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    @keyframes cardHoverFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    @keyframes scoreGlow {
+      0%, 100% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+      50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.08); }
+    }
+
+    @keyframes listEntry {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes notificationBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    @keyframes podiumRise {
+      from {
+        opacity: 0;
+        transform: scaleY(0.55) translateY(28px);
+      }
+      to {
+        opacity: 1;
+        transform: scaleY(1) translateY(0);
+      }
+    }
+
+    @keyframes podiumFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    @keyframes crownShine {
+      0%, 100% { transform: translateX(-50%) scale(1) rotate(0deg); }
+      50% { transform: translateX(-50%) scale(1.08) rotate(8deg); }
+    }
+
+    @keyframes titlePopPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    @keyframes trophyBounce {
+      0%, 100% { transform: translateY(0) rotate(-8deg); }
+      50% { transform: translateY(-6px) rotate(6deg); }
+    }
+
+    @keyframes confettiBurst {
+      0%, 100% {
+        opacity: 0.85;
+        transform: translateY(-50%) scale(0.9) rotate(12deg);
+      }
+      50% {
+        opacity: 1;
+        transform: translateY(-65%) scale(1.15) rotate(24deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    @media (max-width: 1024px) {
+      body {
+        min-height: 100svh;
+      }
+
+      .top-layout {
+        flex-direction: column;
+      }
+
+      .content-layout {
+        overflow: auto;
+      }
+
+      .teams-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .guess-history-panel {
+        flex-basis: auto;
+      }
+
+      .side-panel-stack {
+        flex-basis: auto;
+      }
+
+      .canvas-container {
+        min-height: 0;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 8px;
+        gap: 8px;
+      }
+
+      .teams-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .tool-actions,
+      .tool-settings {
+        gap: 6px;
+      }
+
+      .host-controls {
+        justify-content: stretch;
+      }
+
+      .host-controls-label {
+        width: 100%;
+        text-align: center;
+        margin-right: 0;
+      }
+
+      .host-controls button {
+        flex: 1 1 calc(50% - 8px);
+        min-width: 0;
+      }
+
+      .host-score-controls {
+        width: 100%;
+      }
+
+      .host-score-controls select,
+      .host-score-controls input,
+      .host-score-controls button {
+        flex: 1 1 calc(33.33% - 8px);
+        min-width: 0;
+      }
+
+      .prompt-text {
+        letter-spacing: 1px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell-frame" id="appShellFrame">
+    <div class="app-shell" id="appShell">
+      <div class="header">
+          <!-- <div class="logo"><img src="schneider-logo.svg" alt="Schneider Electric Logo" style="width:32px;height:32px;object-fit:contain;" /></div> -->
+          <h1>Schneider Electric Contractual Canvas Game</h1>
+      </div>
+
+  <div class="setup-modal" id="setupModal">
+    <div class="setup-form">
+      <h2>Join Game</h2>
+      <div class="form-group">
+        <label for="playerName">Player Name:</label>
+        <input type="text" id="playerName" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <p style="color: #9ca3af; font-size: 15px; margin-bottom: 6px;">Team assignment is automatic and private.</p>
+        <p style="color: #9ca3af; font-size: 15px; margin-bottom: 6px;">Game ID is fixed: contractual-canvas</p>
+      </div>
+      <button onclick="joinGame()" style="width: 100%; margin-top: 16px;">Join Game</button>
+    </div>
+  </div>
+
+  <div class="prompt-choice-modal hidden" id="promptChoiceModal">
+    <div class="prompt-choice-card">
+      <h3>Choose your drawing prompt</h3>
+      <div id="promptChoiceInfo" class="prompt-choice-info">Difficulty Values: Easy = 1 pt, Medium = 2 pts, Hard = 3 pts</div>
+      <div id="promptChoiceInfo2" class="prompt-choice-info">Select one prompt below (auto-selects in 20s).</div>
+      <p id="promptChoiceCountdown">20s remaining</p>
+      <div class="prompt-category-row"><h4>Easy</h4></div>
+      <div class="prompt-options" id="easyOptions"></div>
+      <div class="prompt-category-row"><h4>Medium</h4></div>
+      <div class="prompt-options" id="mediumOptions"></div>
+      <div class="prompt-category-row"><h4>Hard</h4></div>
+      <div class="prompt-options" id="hardOptions"></div>
+      <p class="prompt-choice-info" style="margin-top:12px;">Pick one block to begin drawing immediately.</p>
+    </div>
+  </div>
+
+  <div class="intermission-modal hidden" id="intermissionModal">
+    <div class="intermission-card">
+      <h3 id="intermissionTitle">Shucks...</h3>
+      <p id="intermissionMessage">No one could guess the answer!</p>
+      <div class="intermission-prompt" id="intermissionPrompt"></div>
+      <div class="intermission-countdown" id="intermissionCountdown">Next round starts in 10...</div>
+    </div>
+  </div>
+
+  <div class="game-over-modal hidden" id="gameOverModal">
+    <div class="game-over-card">
+      <div class="game-over-title" id="gameOverTitle">Champions!</div>
+      <div class="game-over-subtitle" id="gameOverSubtitle">The final standings are in.</div>
+      <div class="game-over-winner-line" id="gameOverWinnerLine"></div>
+      <div class="podium-stage" id="gameOverPodium"></div>
+      <div class="game-over-footer" id="gameOverFooter">Restart the game to crown the next winner.</div>
+    </div>
+  </div>
+
+
+      <div class="container" id="gameContainer" style="display: none;">
+    <div class="host-controls" id="hostControls">
+      <div class="host-controls-label">Host Controls</div>
+      <button id="hostPrimaryBtn" onclick="togglePrimaryHostAction()">Start Game</button>
+      <button id="hostRestartRoundBtn" onclick="restartRound()">Restart Round</button>
+      <button id="hostNextRoundBtn" onclick="startNewRound()">Next Round</button>
+      <button id="hostRestartGameBtn" class="danger-btn" onclick="restartGame()">Restart Game</button>
+      <div class="host-score-controls">
+        <select id="hostTeamSelect" aria-label="Select team for score adjustment">
+          <option value="team1">Team: Send It to Legal</option>
+          <option value="team2">Team: Oops, All Addendums</option>
+          <option value="team3">Team: The Redline Rangers</option>
+        </select>
+        <input type="number" id="hostPointInput" min="1" max="20" step="1" value="1" aria-label="Points to add">
+        <button id="hostAddPointsBtn" onclick="addPointsToTeam()">Add Points</button>
+        <button id="hostRemovePointsBtn" class="secondary-danger-btn" onclick="removePointsFromTeam()">Remove Points</button>
+      </div>
+    </div>
+
+      <div class="content-layout" style="flex-direction: row; gap: 24px;">
+        <!-- Left column: Prompt + Canvas -->
+        <div style="flex: 2 1 0; display: flex; flex-direction: column; min-width: 0; min-height: 0; gap: 16px;">
+          <div class="prompt-section" style="flex: 0 0 220px; min-height: 180px; max-height: 280px;">
+            <div class="prompt-text" id="promptText">Waiting for game to start...</div>
+            <div class="timer" id="timer">90 seconds</div>
+          </div>
+          <div class="canvas-container" style="flex: 1 1 0; min-height: 420px; max-height: 100%;">
+            <div class="canvas-controls">
+              <div class="tool-actions">
+                <button onclick="selectBrush()" id="brushBtn">Brush</button>
+                <button onclick="toggleEraser()" id="eraserBtn">Eraser</button>
+                <button onclick="undoDrawing()">Undo</button>
+                <button onclick="clearCanvas()">Clear</button>
+              </div>
+              <div class="tool-settings">
+                <div class="control-group">
+                  <label for="colorPicker">Color:</label>
+                  <div class="color-palette">
+                    <button class="color-swatch active" data-color="#ef4444" style="background:#ef4444;" onclick="selectColor('#ef4444')" aria-label="Red"></button>
+                    <button class="color-swatch" data-color="#2563eb" style="background:#2563eb;" onclick="selectColor('#2563eb')" aria-label="Blue"></button>
+                    <button class="color-swatch" data-color="#facc15" style="background:#facc15;" onclick="selectColor('#facc15')" aria-label="Yellow"></button>
+                    <button class="color-swatch" data-color="#22c55e" style="background:#22c55e;" onclick="selectColor('#22c55e')" aria-label="Green"></button>
+                    <button class="color-swatch" data-color="#a855f7" style="background:#a855f7;" onclick="selectColor('#a855f7')" aria-label="Purple"></button>
+                    <button class="color-swatch" data-color="#ec4899" style="background:#ec4899;" onclick="selectColor('#ec4899')" aria-label="Pink"></button>
+                    <button class="color-swatch" data-color="#16a34a" style="background:#16a34a;" onclick="selectColor('#16a34a')" aria-label="Emerald Green"></button>
+                    <button class="color-swatch" data-color="#8b5e3c" style="background:#8b5e3c;" onclick="selectColor('#8b5e3c')" aria-label="Brown"></button>
+                    <button class="color-swatch" data-color="#000000" style="background:#000000;" onclick="selectColor('#000000')" aria-label="Black"></button>
+                    <button class="color-swatch color-swatch-white" data-color="#ffffff" style="background:#ffffff;" onclick="selectColor('#ffffff')" aria-label="White"></button>
+                  </div>
+                  <input type="color" id="colorPicker" value="#ef4444" title="Custom color">
+                </div>
+                <div class="control-group">
+                  <label for="brushSize">Size:</label>
+                  <input type="range" id="brushSize" min="1" max="50" value="3">
+                </div>
+                <div class="control-group">
+                  <label for="eraserSize">Eraser:</label>
+                  <input type="range" id="eraserSize" min="1" max="50" value="10">
+                </div>
+              </div>
+            </div>
+            <div class="canvas-surface">
+              <div class="canvas-status-banner waiting" id="canvasStatusBanner">Waiting for the round to start.</div>
+              <canvas id="drawingCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+        <!-- Right column: Guess entry, history, teams -->
+        <div class="side-panel-stack" style="flex: 1 1 0; min-width: 0; min-height: 0; gap: 16px;">
+          <div class="guess-entry-panel">
+            <div class="guess-entry-label">Enter Guess</div>
+            <input type="text" id="guessInput" class="guess-input" placeholder="Type your guess here..." onkeypress="handleGuessKeypress(event)">
+          </div>
+          <div class="guess-history-panel" id="guessHistoryPanel">
+            <div class="guess-history-header">Guess History</div>
+            <ul class="guess-history-list" id="guessHistoryList"></ul>
+          </div>
+          <div class="teams-panel">
+            <div id="team1Card" class="team-card team1">
+              <div class="team-score-block">
+                <div class="team-score" id="team1Score">0</div>
+              </div>
+              <div class="team-header">
+                <div class="team-name">Team: Send It to Legal</div>
+              </div>
+              <div style="font-size:14px;color:#9ca3af;margin-bottom:4px;">Members</div>
+              <ul class="team-players" id="team1Players"></ul>
+            </div>
+            <div id="team2Card" class="team-card team2">
+              <div class="team-score-block">
+                <div class="team-score" id="team2Score">0</div>
+              </div>
+              <div class="team-header">
+                <div class="team-name">Team: Oops, All Addendums</div>
+              </div>
+              <div style="font-size:14px;color:#9ca3af;margin-bottom:4px;">Members</div>
+              <ul class="team-players" id="team2Players"></ul>
+            </div>
+            <div id="team3Card" class="team-card team3">
+              <div class="team-score-block">
+                <div class="team-score" id="team3Score">0</div>
+              </div>
+              <div class="team-header">
+                <div class="team-name">Team: The Redline Rangers</div>
+              </div>
+              <div style="font-size:14px;color:#9ca3af;margin-bottom:4px;">Members</div>
+              <ul class="team-players" id="team3Players"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="client.js"></script>
+</body>
