@@ -12,6 +12,10 @@ const io = socketIo(server, {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Levenshtein distance calculation
 function levenshteinDistance(str1, str2) {
   const track = Array(str2.length + 1).fill(null).map(() =>
