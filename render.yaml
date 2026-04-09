@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: contractual-canvas
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    # Render automatically injects PORT; the app binds to process.env.PORT
+    healthCheckPath: /

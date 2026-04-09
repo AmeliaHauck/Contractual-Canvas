@@ -13,6 +13,32 @@ A fun, real-time multiplayer drawing game designed for team building with Micros
 ✅ **Team Scoring** - 3 teams with real-time scoring and leaderboard
 ✅ **Microsoft Teams Integration** - Auto-detect player names from Teams
 
+## 🚀 Deploy Online
+
+### Option 1: Deploy to Render (Recommended — Free)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+1. Click the button above (or go to [render.com](https://render.com) and create a new **Web Service**)
+2. Connect your GitHub repository
+3. Render auto-detects `render.yaml` — click **Deploy**
+4. Your game will be live at `https://contractual-canvas.onrender.com` (or similar)
+
+### Option 2: Run with Docker
+
+```bash
+docker build -t contractual-canvas .
+docker run -p 3000:3000 contractual-canvas
+```
+
+Then open http://localhost:3000
+
+### Option 3: Download a Release
+
+Visit the [Releases page](../../releases) to download a packaged zip, extract it, and follow the installation steps below.
+
+---
+
 ## Prerequisites
 
 - **Node.js** (v14 or higher) - [Download](https://nodejs.org/)
@@ -180,6 +206,17 @@ const PORT = process.env.PORT || 3001; // Change to 3001 or another port
 ## License
 
 MIT
+
+## Creating a New Release
+
+To publish a new release, push a version tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The GitHub Actions workflow will automatically package the game and create a release on the [Releases page](../../releases).
 
 ## Future Enhancements
 

@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Package game
+        run: |
+          zip -r contractual-canvas-${{ github.ref_name }}.zip . \
+            --exclude ".git/*" \
+            --exclude "node_modules/*" \
+            --exclude "*.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Contractual Canvas ${{ github.ref_name }}
+          body: |
+            ## 🎨 Contractual Canvas ${{ github.ref_name }}
+
+            A multiplayer drawing game for team building.
+
+            ### Quick Start
+            1. Download the source zip below
+            2. Run `npm install`
+            3. Run `npm start`
+            4. Open http://localhost:3000
+
+            ### One-Click Deploy
+            [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+          files: contractual-canvas-${{ github.ref_name }}.zip
+          generate_release_notes: true
