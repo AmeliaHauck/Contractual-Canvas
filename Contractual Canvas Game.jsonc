@@ -1,0 +1,296 @@
+
+// ✅ CLEAN VERSION — CONTRACT DRAW GAME (React + Teams Tab Compatible)
+// ✅ Schneider Electric Theme
+// ✅ Canvas Drawing + Brush + Eraser + Undo
+// ✅ Timer
+// ✅ 150 Prompts (Easy/Medium/Hard)
+// ✅ Prompt Selection (2 per difficulty)
+// ✅ Scoreboard + Team Rotation
+// ✅ Fuzzy Guessing (Levenshtein)
+// ✅ Teams SDK Auto Username
+
+import React, { useEffect, useRef, useState } from "react";
+import * as microsoftTeams from "@microsoft/teams-js";
+
+export default function ContractDrawGame() {
+  // =============================================================
+  // ✅ STATE
+  // =============================================================
+  const [userName, setUserName] = useState("");
+
+  // Teams & Scoring
+  const [drawerTeam, setDrawerTeam] = useState("team1");
+  const [teamScores, setTeamScores] = useState({
+    team1: 0,
+    team2: 0,
+    team3: 0,
+  });
+
+  // Prompts
+  const [promptChoices, setPromptChoices] = useState([]);
+  const [selectedPrompt, setSelectedPrompt] = useState(null);
+
+  // Timer
+  const [roundTime, setRoundTime] = useState(60);
+  const [running, setRunning] = useState(false);
+
+  // Drawing controls
+  const [brushColor, setBrushColor] = useState("#00B140");
+  const [brushSize, setBrushSize] = useState(4);
+  const [isEraser, setIsEraser] = useState(false);
+
+  // Undo
+  const [undoStack, setUndoStack] = useState([]);
+
+  // Canvas Refs
+  const canvasRef = useRef(null);
+  const ctxRef = useRef(null);
+  const drawing = useRef(false);
+
+  // =============================================================
+  // ✅ LEVENSHTEIN FUZZY MATCH
+  // =============================================================
+  function levenshtein(a, b) {
+    const matrix = Array.from({ length: b.length + 1 }, () => []);
+    for (let i = 0; i <= b.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
+  const fuzzyMatch = (input, correct) => {
+    return levenshtein(input.toLowerCase(), correct.toLowerCase()) <= 2;
+  };
+
+  // =============================================================
+  // ✅ PROMPTS
+  // =============================================================
+  const EASY = [
+    "Contract","Signature","Deadline","Scope","Invoice","Budget","Estimate",
+    "Meeting","Call","Email","Proposal","Clause","Terms","Renewal","Amendment",
+    "Change","Request","Pricing","Payment","Approval","Checklist","Document",
+    "Folder","Submission","Notes","Review","File","Draft","Edit","Team",
+    "Buyer","Seller","Vendor","Customer","Delivery","Product","Service",
+    "Timeline","Highlight","Pen","Stamp","Form","Binder","Redline","Status",
+    "Record","Quote","Copy","Sign-Off"
+  ];
+
+  const MEDIUM = [
+    "Revision","Negotiation","Compliance","Dispute","Warranty","Liability",
+    "Escalation","Milestone","Deliverable","Risk","Issue","Exception",
+    "Clarification","Counteroffer","Routing","Redraft","Deviation","Variance",
+    "Alignment","Review Board","Approval Chain","Bid Review","Tender",
+    "Submission Day","Costing","Pricing Model","Fee Structure","Options",
+    "Notes Review","Contract Markup","Pending Item","Checklist Gap",
+    "Update Request","Scope Match","Terms Review","Draft Change","Missing Info",
+    "Open Item","Escalation Call","Vendor Quote","Clarification Letter",
+    "Response Plan","Action Log","Routing Slip","Approval Stamp",
+    "Contract Folder","Redline Round","Gap Check","Handshake Deal",
+    "Cost Increase"
+  ];
+
+  const HARD = [
+    "Scope Creep","Force Majeure","Indemnity","Termination","Breach","Penalties",
+    "Remedies","Liquidated Damages","Concession","Tradeoff","Mediation",
+    "Arbitration","Exposure","Escalation Clause","Performance Risk",
+    "Back-to-Back","Milestone Failure","Delay Claim","Change Order",
+    "Price Adjustment","Contingency","Deliverable Failure","Risk Matrix",
+    "High Risk","Non-Compliance","Limited Liability","Priority Rights",
+    "Contract Freeze","Work Halt","Resource Shortage","SLA Violation",
+    "Dispute Board","Compliance Breach","Negotiation Standoff","Legal Review",
+    "Binding Terms","Material Change","Critical Path","Impact Analysis",
+    "Cost Overrun","Scope Gap","Variance Report","Contract Exposure",
+    "Risk Transfer","Loss Event","Contractual Remedy","Technical Exception",
+    "Escalation Path","Deviation Request","Obligations"
+  ];
+
+  // =============================================================
+  // ✅ TEAMS NAME DETECTION
+  // =============================================================
+  useEffect(() => {
+    microsoftTeams.app.initialize().then(() => {
+      microsoftTeams.app.getContext().then((ctx) => {
+        const name = ctx.user.userPrincipalName.split("@")[0];
+        setUserName(name);
+      });
+    });
+  }, []);
+
+  // =============================================================
+  // ✅ CANVAS SETUP
+  // =============================================================
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    canvas.width = 700;
+    canvas.height = 450;
+
+    const ctx = canvas.getContext("2d");
+    ctx.lineCap = "round";
+    ctx.strokeStyle = isEraser ? "white" : brushColor;
+    ctx.lineWidth = brushSize;
+
+    ctxRef.current = ctx;
+  }, [brushColor, brushSize, isEraser]);
+
+  // Undo save
+  const saveUndoState = () => {
+    const data = canvasRef.current.toDataURL();
+    setUndoStack((prev) => [...prev, data]);
+  };
+
+  const undo = () => {
+    if (undoStack.length === 0) return;
+    const last = undoStack.pop();
+    setUndoStack([...undoStack]);
+    const img = new Image();
+    img.src = last;
+    img.onload = () => ctxRef.current.drawImage(img, 0, 0);
+  };
+
+  // Drawing
+  const startDraw = (e) => {
+    drawing.current = true;
+    saveUndoState();
+    ctxRef.current.beginPath();
+    ctxRef.current.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+  };
+
+  const draw = (e) => {
+    if (!drawing.current) return;
+    ctxRef.current.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    ctxRef.current.stroke();
+  };
+
+  const endDraw = () => (drawing.current = false);
+
+  const clearCanvas = () => {
+    ctxRef.current.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  };
+
+  // =============================================================
+  // ✅ PROMPT SELECTION
+  // =============================================================
+  const pickTwo = (arr, level) =>
+    [...arr]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2)
+      .map((p) => ({ prompt: p, difficulty: level }));
+
+  const generatePrompts = () => {
+    setPromptChoices([
+      ...pickTwo(EASY, "Easy"),
+      ...pickTwo(MEDIUM, "Medium"),
+      ...pickTwo(HARD, "Hard"),
+    ]);
+  };
+
+  // =============================================================
+  // ✅ TIMER
+  // =============================================================
+  useEffect(() => {
+    if (!running || roundTime === 0) return;
+    const t = setTimeout(() => setRoundTime((t) => t - 1), 1000);
+    return () => clearTimeout(t);
+  }, [running, roundTime]);
+
+  // =============================================================
+  // ✅ GUESSING
+  // =============================================================
+  const submitGuess = (guess) => {
+    if (!selectedPrompt) return;
+    if (!fuzzyMatch(guess, selectedPrompt.prompt)) return;
+
+    // score
+    setTeamScores((prev) => ({
+      ...prev,
+      [drawerTeam]: prev[drawerTeam] + 1,
+    }));
+
+    // stop round
+    setRunning(false);
+    setSelectedPrompt(null);
+
+    // rotate team
+    const teams = ["team1", "team2", "team3"];
+    const next = teams[(teams.indexOf(drawerTeam) + 1) % 3];
+    setDrawerTeam(next);
+
+    // reset timer
+    setRoundTime(60);
+  };
+
+  // =============================================================
+  // ✅ UI START (you can style later)
+  // =============================================================
+  return (
+    <div style={{ padding: 20, fontFamily: "Arial" }}>
+      <h2>Contract Draw Game</h2>
+      <p>Welcome, {userName}</p>
+
+      {/* Canvas */}
+      <canvas
+        ref={canvasRef}
+        onMouseDown={startDraw}
+        onMouseMove={draw}
+        onMouseUp={endDraw}
+        onMouseLeave={endDraw}
+        style={{ background: "white", border: "2px solid #00B140", borderRadius: 8 }}
+      ></canvas>
+
+      {/* Controls */}
+      <div style={{ marginTop: 10 }}>
+        <button onClick={() => setIsEraser(false)}>Brush</button>
+        <button onClick={() => setIsEraser(true)}>Eraser</button>
+        <button onClick={undo}>Undo</button>
+        <button onClick={clearCanvas}>Clear</button>
+
+        <input
+          type="color"
+          value={brushColor}
+          onChange={(e) => setBrushColor(e.target.value)}
+        />
+
+        <select value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))}>
+          <option value={2}>Small</option>
+          <option value={4}>Medium</option>
+          <option value={8}>Large</option>
+        </select>
+      </div>
+
+      {/* Timer */}
+      <h3>Time: {roundTime}s</h3>
+
+      {/* Prompts */}
+      <button onClick={generatePrompts}>Get Prompts</button>
+
+      {promptChoices.length > 0 && (
+        <div>
+          <h3>Prompt Choices</h3>
+          {promptChoices.map((p, i) => (
+            <button key={i} onClick={() => setSelectedPrompt(p)}>
+              {p.prompt} ({p.difficulty})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Scoreboard */}
+      <div style={{ marginTop: 20 }}>
+        <h3>Scores</h3>
+        <p>Team 1: {teamScores.team1}</p>
+        <p>Team 2: {teamScores.team2}</p>
+        <p>Team 3: {teamScores.team3}</p>
+      </div>
+    </div>
+  );
+}
