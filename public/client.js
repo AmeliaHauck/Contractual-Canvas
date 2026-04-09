@@ -276,6 +276,7 @@
       alert('Please enter your name before joining.');
       return;
     }
+    localStorage.setItem('cc_playerName', playerName);
     socket.emit('join_game', { playerName, gameId: GAME_ID });
   };
 
@@ -414,6 +415,18 @@
 
   socket.on('connect', function () {
     myId = socket.id;
+
+    // On reconnect (socket.io sets socket.recovered or we detect via stored name + visible game UI)
+    const storedName = localStorage.getItem('cc_playerName');
+    const gameVisible = gameContainer && !gameContainer.classList.contains('hidden');
+    if (storedName && gameVisible) {
+      // Attempt to silently rejoin with the same name
+      socket.emit('join_game', { playerName: storedName, gameId: GAME_ID });
+    } else if (storedName && setupModal) {
+      // Pre-fill the name input for convenience
+      const nameInput = document.getElementById('playerName');
+      if (nameInput && !nameInput.value) nameInput.value = storedName;
+    }
   });
 
   socket.on('player_joined', function (data) {
@@ -656,6 +669,11 @@
     if (ctx && drawingCanvas) ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
     undoStack = [];
     if (hostPrimaryBtn) hostPrimaryBtn.textContent = 'Start Game';
+  });
+
+  socket.on('player_disconnected', function (data) {
+    const msg = `${data.playerName || 'A player'} disconnected — they have ${data.reconnectWindowSeconds || 30}s to rejoin.`;
+    appendGuessHistory({ type: 'hint', hintNumber: 0, text: msg });
   });
 
   socket.on('score_updated', function (data) {

@@ -45,6 +45,9 @@ function levenshteinDistance(str1, str2) {
 // Game state
 const games = {};
 const players = {};
+// disconnectedSessions: normalized player name -> { teamId, gameId, playerName, timer }
+const disconnectedSessions = {};
+const RECONNECT_GRACE_MS = 30000; // 30-second window to reconnect
 const ALLOWED_STARTERS = new Set(['amelia', 'marlene']);
 const MAX_ROUNDS = 15;
 const TARGET_SCORE = 10;
@@ -582,12 +585,52 @@ io.on('connection', (socket) => {
     const { playerName, teamId, teamsUserPrincipalName } = data;
     const fixedGameId = 'contractual-canvas';
     const playerDisplayName = playerName || teamsUserPrincipalName?.split('@')[0] || `Player${socket.id.slice(0, 4)}`;
+    const normalizedName = playerDisplayName.trim().toLowerCase();
 
     if (!games[fixedGameId]) {
       games[fixedGameId] = new Game(fixedGameId);
     }
 
     const game = games[fixedGameId];
+
+    // Check if this player has a pending reconnect session
+    const session = disconnectedSessions[normalizedName];
+    if (session) {
+      clearTimeout(session.timer);
+      delete disconnectedSessions[normalizedName];
+
+      // Restore the player's existing socket entry under the new socket id
+      players[socket.id] = { gameId: fixedGameId, teamId: session.teamId, playerName: playerDisplayName };
+
+      // Update the player id stored in the team's player list
+      const team = game.teams[session.teamId];
+      if (team) {
+        const member = team.players.find(p => p.name.trim().toLowerCase() === normalizedName);
+        if (member) {
+          // Check if they were the drawer BEFORE updating their id
+          if (game.currentDrawer === member.id) {
+            game.currentDrawer = socket.id;
+          }
+          member.id = socket.id;
+        } else {
+          team.players.push({ id: socket.id, name: playerDisplayName });
+        }
+      }
+
+      socket.join(fixedGameId);
+
+      io.to(fixedGameId).emit('player_joined', {
+        teams: game.teams,
+        notification: `${playerDisplayName} reconnected`,
+        assignedTeam: session.teamId
+      });
+
+      const joinState = game.getJoinState(socket.id);
+      socket.emit('game_state_sync', { ...joinState, reconnected: true });
+
+      console.log(`${playerDisplayName} reconnected to game ${fixedGameId} on ${session.teamId}`);
+      return;
+    }
 
     const assignedTeam = game.addPlayer(socket.id, playerDisplayName, teamId);
     socket.join(fixedGameId);
@@ -958,7 +1001,6 @@ io.on('connection', (socket) => {
     const gameOverPayload = game.checkGameOver();
     if (gameOverPayload) {
       game.setPhase('game_over');
-      game.setPhase('game_over');
       io.to(gameId).emit('game_over', gameOverPayload);
     }
   });
@@ -1004,27 +1046,52 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
 
-    const game = games['contractual-canvas'];
-    const teams = game?.removePlayer(socket.id);
-    if (teams) {
-      io.to('contractual-canvas').emit('player_joined', {
+    const playerData = players[socket.id];
+    if (!playerData) return;
+
+    const game = games[playerData.gameId];
+    const { playerName, teamId, gameId } = playerData;
+    const normalizedName = playerName.trim().toLowerCase();
+
+    // Cancel any existing grace timer for this name (re-disconnecting before reconnecting)
+    if (disconnectedSessions[normalizedName]) {
+      clearTimeout(disconnectedSessions[normalizedName].timer);
+    }
+
+    // Start grace-period: player is marked as disconnected but not yet removed
+    const timer = setTimeout(() => {
+      delete disconnectedSessions[normalizedName];
+
+      if (!game) return;
+      const team = game.teams[teamId];
+      if (team) {
+        team.players = team.players.filter(p => p.name.trim().toLowerCase() !== normalizedName);
+      }
+
+      const teams = game.teams;
+      io.to(gameId).emit('player_joined', {
         teams,
-        notification: `A player left the game and has been removed from their team.`
+        notification: `${playerName} left the game.`
       });
 
-      // Check if all teams are empty (no players left)
       const allEmpty = Object.values(teams).every(team => team.players.length === 0);
       if (allEmpty) {
-        // Reset scores and game state
         game.resetForNewGame();
-        io.to('contractual-canvas').emit('game_reset', {
+        io.to(gameId).emit('game_reset', {
           teams: game.teams,
           notification: 'All players have left. Game has been reset.'
         });
       }
-    } else {
-      delete players[socket.id];
-    }
+    }, RECONNECT_GRACE_MS);
+
+    disconnectedSessions[normalizedName] = { teamId, gameId, playerName, timer };
+    delete players[socket.id];
+
+    io.to(playerData.gameId).emit('player_disconnected', {
+      playerName,
+      teamId,
+      reconnectWindowSeconds: Math.round(RECONNECT_GRACE_MS / 1000)
+    });
   });
 });
 
